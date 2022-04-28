@@ -7,8 +7,11 @@
 /* 
  * TODO: this is strtok but the delim is treated as a single flat matcher
  * NOTE: this should be replaced with a regex parser.
+ *
+ * TODO: Implement a regex engine to deal with this instead of strcok
  */
 
+// XXX: like the name ;)
 static char *strcok(char *orig, char *delim, char **save)
 {
 	if(orig == NULL)
@@ -39,6 +42,7 @@ static char *strcok(char *orig, char *delim, char **save)
 	return stale_orig;
 }
 
+// NOTE: this only trims the first part not the ending
 static char *strtrm(char *x)
 {
 	while(*x == ' ') x++;
