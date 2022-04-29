@@ -14,7 +14,6 @@
 #include "http_response.h"
 
 #define RES404 "<h1>NOT FOUND</h1>"
-
 void connection_handler(connection_t *c)
 {
 	char req[1024] = {0};

@@ -18,6 +18,6 @@ int main(int argc, char *argv[])
 
 	printf("Server Closing Connections...\n");
 	server_destroy(&sr);
-	
+
 	return 0;
 }

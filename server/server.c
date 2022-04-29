@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,6 +11,9 @@
 
 #include "server.h"
 #include "connection.h"
+#include "tpool.h"
+
+#include <assert.h>
 
 /*
  * TODO; The error handling here is terrible 
@@ -20,15 +24,13 @@ server_t server_create(int port, int backlog)
 {
 	server_t s = {0};
 
-	pthread_mutex_init(&s.mutex, NULL);
-
 	int status = 0;
 	int on = 1;
 
 	status = (s.fd = socket(AF_INET, SOCK_STREAM, 0));
 	if(status < 0)
 	{
-		printf("Could not create socket\n");
+		printf("Could not create socket : %d\n", errno);
 		exit(1);
 	}
 
@@ -36,7 +38,7 @@ server_t server_create(int port, int backlog)
 	status = setsockopt(s.fd, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof on);
 	if(status < 0)
 	{
-		printf("Could not set socket to reusable\n");
+		printf("Could not set socket to reusable : %d\n", errno);
 		exit(1);
 	}
 
@@ -47,7 +49,7 @@ server_t server_create(int port, int backlog)
 	status = bind(s.fd, (const struct sockaddr *)&sa, sizeof sa);
 	if(status < 0)
 	{
-		printf("Could not bind to port %d\n", port);
+		printf("Could not bind to port %d : %d\n", port, errno);
 		exit(1);
 	}
 
@@ -60,6 +62,8 @@ server_t server_create(int port, int backlog)
 
 	s.listning = 1;
 
+	s.scheduler = tpool_create(1);
+
 	return s;
 }
 
@@ -71,22 +75,18 @@ void server_start(server_t *s)
 	// TODO: make this multi threaded
 	while(s->listning)
 	{
-		int connection_fd = server_accept_connection(s);
-
-		con.fd = connection_fd;
-
-		connection_handler(&con);
-
+		con.fd= server_accept_connection(s);
+		tpool_exec(s->scheduler, connection_handler, con);
 #ifndef NDEBUG
 		printf("Stopping the Server for development perposes\n");
-		s->listning = 0;
+		break;
 #endif
 	}
 }
 
 void server_destroy(server_t *s)
 {
-	pthread_mutex_destroy(&s->mutex);
+	tpool_destroy(s->scheduler);
 	shutdown(s->fd, SHUT_RDWR);
 	close(s->fd);
 }
@@ -94,14 +94,19 @@ void server_destroy(server_t *s)
 // NOTE: use this thing to accept connections
 int server_accept_connection(server_t *s)
 {
-	pthread_mutex_lock(&s->mutex);
-
 	int confd = 0;
 	struct sockaddr_in sa = {0};
 	socklen_t l = 0;
+
+	printf("%d\n", s->fd);
 	confd = accept(s->fd, (struct sockaddr *)&sa, &l);
 
-	pthread_mutex_unlock(&s->mutex);
+	if(confd < 0)
+	{
+		printf("Could not accpet connection : %d\n", errno);
+		printf("%s\n", strerror(errno));
+		exit(1);
+	}
 
 	return confd;
 }
