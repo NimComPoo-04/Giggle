@@ -81,6 +81,8 @@ void tpool_destroy(tpool_t *t)
 	}
 
 	pthread_mutex_destroy(&t->mutex);
+
+	free(t);
 }
 
 // INTERNAL FUNCTION
@@ -93,12 +95,17 @@ static void *thread_handler(void *g)
 	pthread_t self_tid = pthread_self(); 
 	struct thread *self = NULL;
 
-	for(int i = 0; i < tpool->tnum; i++)
+	// if the self == NULL this means the thread has not been registered yet
+	// we loop until we reach the correct condition lol
+	while(self == NULL)
 	{
-		if(self_tid == tpool->threads[i].tid)
-			self = &tpool->threads[i];
+		for(int i = 0; i < tpool->tnum; i++)
+		{
+			if(self_tid == tpool->threads[i].tid)
+				self = &tpool->threads[i];
+		}
 	}
-
+	
 	while(1)
 	{
 		// thread returns if it encouters is_dead

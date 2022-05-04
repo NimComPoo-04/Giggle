@@ -10,49 +10,30 @@
 #include <string.h>
 
 #include "connection.h"
-#include "http_request.h"
-#include "http_response.h"
+#include "http.h"
 
-#define RES404 "<h1>NOT FOUND</h1>"
 void connection_handler(connection_t *c)
 {
-	char req[1024] = {0};
+	char *req = http_request_read(c->fd, NULL);
+	//printf(req);
 
-	recv(c->fd, req, sizeof req, 0);
+	map_t m = http_request_parse(req);
 
-	http_request_t h = http_request_parse(req);
-
-	printf("METHOD: %s\n", h.method);
-	printf("PATH: %s\n", h.path);
-	printf("PROTO: %s\n", h.proto);
-
-	for(int i = 0; i < h.fields_current; i++)
+	struct bkt_t *b = m.bkts[0];
+	while(b)
 	{
-		printf("( %s : %s )\n", h.field_key[i], h.field_value[i]);
+		printf("%s: %s\n", b->key, b->value);
+		b = b->next;
 	}
 
-	char res_path[512] = {0};
+	map_destroy(&m);
+	free(req);
 
-	strcpy(res_path, "public");
-	strcat(res_path, h.path);
-
-	http_response_t config = {0};
-	config.status = 200;
-
-	struct stat file_info = {0}; 
-	stat(res_path, &file_info);
-
-	if(S_ISREG(file_info.st_mode))
-		config.body = http_read_file(res_path);
-	else
-		config.body = RES404;
-
-	char *res = http_response_gen(&config);
-
+	char *res = http_response_gen(200, NULL);
 	send(c->fd, res, strlen(res), 0);
 
-	if((const char *)config.body != (const char *)RES404)
-		free(config.body);
+	printf("%s\n", res);
+
 	free(res);
 
 	shutdown(c->fd, SHUT_RDWR);

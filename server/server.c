@@ -77,10 +77,6 @@ void server_start(server_t *s)
 	{
 		con.fd= server_accept_connection(s);
 		tpool_exec(s->scheduler, connection_handler, con);
-#ifndef NDEBUG
-		printf("Stopping the Server for development perposes\n");
-		break;
-#endif
 	}
 }
 
@@ -98,7 +94,6 @@ int server_accept_connection(server_t *s)
 	struct sockaddr_in sa = {0};
 	socklen_t l = 0;
 
-	printf("%d\n", s->fd);
 	confd = accept(s->fd, (struct sockaddr *)&sa, &l);
 
 	if(confd < 0)

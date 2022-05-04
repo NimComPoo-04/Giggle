@@ -18,3 +18,8 @@ make run # Yeah literally just this lol
 ```
 
 #### IN DEV DON'T USE
+
+**BUGS:**
+* Sometimes the server accepts connection but does not respond with anything atall.
+This happens mostly in the situations when the server exits without doing more than
+one connections. This is quite unfortunate.
