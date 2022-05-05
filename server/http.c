@@ -100,45 +100,31 @@ map_t http_request_parse(char *value)
 static const char *status_code_gen(int status)
 {
 	if(status == 200)
-		return " 200 OK ";
-	return " 404 Not Found ";
-}
-
-
-// TODO: make this shit less weird
-static char *strheapcat(char *c, const char *f, int *len)
-{
-	int flen = strlen(f);
-	c = realloc(c, *len+flen);
-	strncpy(c+*len, f, flen);
-	*len += flen;
-	return c;
+		return "200 OK";
+	return "404 Not Found";
 }
 
 char *http_response_gen(int status, map_t *m, const char *body)
 {
 	char *response = NULL;
-	int len = 0;
+	size_t len = 0;
 
-	response = strheapcat(response, "HTTP/1.0", &len);
-	response = strheapcat(response, status_code_gen(status), &len);
-	response = strheapcat(response, "\r\n", &len);
+	FILE *stream = open_memstream(&response, &len);
+
+	fprintf(stream, "HTTP/1.0 %s\r\n", status_code_gen(status));
 
 	for(int i = 0; i < m->length; i++)
 	{
 		struct bkt_t *b = m->bkts[i];
 		while(b)
 		{
-			response = strheapcat(response, b->key, &len);
-			response = strheapcat(response, ": ", &len);
-			response = strheapcat(response, b->value, &len);
-			response = strheapcat(response, "\r\n", &len);
+			fprintf(stream, "%s: %s\r\n", b->key, b->value);
 			b = b->next;
 		}
 	}
 
-	response = strheapcat(response, "\r\n", &len);
-	response = strheapcat(response, body, &len);
+	fprintf(stream, "\r\n%s\r\n", body);
+	fclose(stream);
 
 	return response;
 }

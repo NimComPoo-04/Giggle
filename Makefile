@@ -9,7 +9,7 @@ CFLAGS := -std=c11 -O2 -DNDEBUG
 endif
 
 ifeq ($(TARGET_OS), unix)
-CFLAGS += -DTARGET_UNIX -D_XOPEN_SOURCE
+CFLAGS += -D_XOPEN_SOURCE -D_POSIX_C_SOURCE=200809L
 endif
 
 SRC := $(wildcard *.c $(foreach T, $(DIR), $(T)/*.c))
