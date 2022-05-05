@@ -43,10 +43,10 @@ char *http_request_read(int con_fd, int *zZzZ)
 	return header;
 }
 
-static int stupid_hash_func(char *key)
+// TODO: for the love of god get a good hash function
+int stupid_hash_func(char *key)
 {
-	(void)key;
-	return 0;
+	return strlen(key);
 }
 
 char *strcok(char *value, char *delim, char **save)
@@ -100,21 +100,45 @@ map_t http_request_parse(char *value)
 static const char *status_code_gen(int status)
 {
 	if(status == 200)
-		return "200 OK";
-	return "404 Not Found";
+		return " 200 OK ";
+	return " 404 Not Found ";
 }
 
-char *http_response_gen(int status, map_t *m)
+
+// TODO: make this shit less weird
+static char *strheapcat(char *c, const char *f, int *len)
 {
-	(void)m;
-	char *response = calloc(sizeof(char), 128);
+	int flen = strlen(f);
+	c = realloc(c, *len+flen);
+	strncpy(c+*len, f, flen);
+	*len += flen;
+	return c;
+}
 
-	strcpy(response, "HTTP/1.0 ");
-	strcat(response, status_code_gen(status));
-	strcat(response, "\r\n\r\n");
+char *http_response_gen(int status, map_t *m, const char *body)
+{
+	char *response = NULL;
+	int len = 0;
 
-	const char *hehboi = "<h1>Hello, World!<h1><p>No I am not crazy<br>Swear on god world say that on more time i will loose my shit!</p>";
-	strcat(response, hehboi);
+	response = strheapcat(response, "HTTP/1.0", &len);
+	response = strheapcat(response, status_code_gen(status), &len);
+	response = strheapcat(response, "\r\n", &len);
+
+	for(int i = 0; i < m->length; i++)
+	{
+		struct bkt_t *b = m->bkts[i];
+		while(b)
+		{
+			response = strheapcat(response, b->key, &len);
+			response = strheapcat(response, ": ", &len);
+			response = strheapcat(response, b->value, &len);
+			response = strheapcat(response, "\r\n", &len);
+			b = b->next;
+		}
+	}
+
+	response = strheapcat(response, "\r\n", &len);
+	response = strheapcat(response, body, &len);
 
 	return response;
 }

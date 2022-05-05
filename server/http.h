@@ -14,6 +14,6 @@
 char *http_request_read(int con_fd, int *len);
 map_t http_request_parse(char *value);
 
-char *http_response_gen(int status, map_t *field);
+char *http_response_gen(int status, map_t *field, const char *body);
 
 #endif

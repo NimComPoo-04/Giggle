@@ -12,11 +12,14 @@
 #include "connection.h"
 #include "http.h"
 
+// TODO: DON'T USE THIS PLEASE
+int stupid_hash_func(char *key);
+
 void connection_handler(connection_t *c)
 {
 	char *req = http_request_read(c->fd, NULL);
 	//printf(req);
-
+	
 	map_t m = http_request_parse(req);
 
 	struct bkt_t *b = m.bkts[0];
@@ -29,7 +32,15 @@ void connection_handler(connection_t *c)
 	map_destroy(&m);
 	free(req);
 
-	char *res = http_response_gen(200, NULL);
+	const char *body = "<h1>Hello, World!\n</h1>";
+
+	map_t req_map = map_create(100, stupid_hash_func);
+	map_add(&req_map, "Server", "Gigglelol");
+
+	char *res = http_response_gen(200, &req_map , body);
+
+	map_destroy(&req_map);
+
 	send(c->fd, res, strlen(res), 0);
 
 	printf("%s\n", res);
