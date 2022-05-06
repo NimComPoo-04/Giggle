@@ -8,6 +8,7 @@ Simple Webserver for Educational Perposes
 * make build system
 * unix based os
 * libpthreads for multi threading
+* requires lua-5.3.6 for stuff lol
 
 This program should be ported to windows... in the _future_ ;P
 
