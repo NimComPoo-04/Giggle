@@ -68,7 +68,7 @@ void connection_handler(connection_t *c)
 		lua_pushstring(L, request);
 		lua_setglobal(L, "__HTTP_REQUEST__");
 
-		if(luaL_dofile(L, "server/glue.lua") != LUA_OK)
+		if(luaL_dofile(L, "glue.lua") != LUA_OK)
 		{
 			if(lua_isstring(L, -1))
 			{
