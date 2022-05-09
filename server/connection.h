@@ -1,6 +1,10 @@
 #ifndef _CONNECTION_H_
 #define _CONNECTION_H_
 
+#include <ctype.h>
+
+#include "map.h"
+
 typedef struct
 {
 	int fd;

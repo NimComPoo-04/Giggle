@@ -22,4 +22,6 @@ void map_add(map_t *m, char *key, char *value);
 void map_rm(map_t *m, char *key);
 void map_destroy(map_t *m);
 
+int map_default_hash(char *key);
+
 #endif

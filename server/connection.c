@@ -4,103 +4,152 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-#include <lua.h>
-#include <lualib.h>
-#include <lauxlib.h>
-
-#include "connection.h"
-
-char *read_http_request(int fd, size_t *plen)
-{
-	char *buff = NULL;
-	size_t len = 0;
-
-	FILE *stream = open_memstream(&buff, &len);
-
-	char buffer[256] = {0};
-	size_t amt_read = 256;
-
-	while(amt_read >= sizeof buffer)
-	{
-		amt_read = recv(fd, buffer, sizeof buffer, 0);
-		fwrite(buffer, sizeof(char), amt_read, stream);
-	}
-
-	fclose(stream);
-
-	if(plen) *plen = len;
-
-	return buff;
-}
-
-/*
- * The lua script would write to a global value called
- * __HTTP_REQUEST__ the whole request.
- * __HTTP_RESPONSE__ the whole response. yea that would defenitely be fun
- * innit lol.
- *
- * This crap feels like a total HACK lol XD
- * who cares this is fun lol.
- */
+static char *load_file(char *path, size_t *len, int *tf);
 
 void connection_handler(connection_t *c)
 {
-	lua_State *L = luaL_newstate();
-	luaL_openlibs(L);
+	char lennum[32] = {0}; // this is a little helper lol
 
-	int keep_alive = 1;
+	size_t raw_request_len = 0;
+	char *raw_request = http_request_read(c->fd, &raw_request_len);
+	http_request_t request = http_request_parse(raw_request);
 
-	printf("[Connected] :: %d\n", c->fd);
+	http_response_t response = {0};
 
-	while(keep_alive)
+	response.Protocol = "HTTP/1.0";
+	response.headers = map_create(10, map_default_hash);
+	map_add(&response.headers, "Server", "Giggle");
+
+
+	// TODO: don't let this be hard coded for the love of god
+	char *public_dir = "public";
+
+	char path[64] = {0};
+	strcpy(path, public_dir);
+	strcat(path, request.URI);
+	char *extention = strchr(path, '.');
+
+	if(strcmp(request.Method, "GET") == 0)
 	{
-		char *request = read_http_request(c->fd, NULL);
-		const char *response = NULL;
-		size_t len_response = 0;
-
-		// starting a new lua vm
-
-		lua_pushstring(L, request);
-		lua_setglobal(L, "__HTTP_REQUEST__");
-
-		if(luaL_dofile(L, "glue.lua") != LUA_OK)
+		if(extention == NULL)
 		{
-			if(lua_isstring(L, -1))
-			{
-				printf("%s\n", lua_tostring(L, -1));
-			}
-			lua_pop(L, 1);
-		}
+			// TODO: action routes here
 
-		lua_getglobal(L, "__HTTP_RESPONSE__");
-		if(lua_isstring(L, -1))
+			int status = 404;
+			size_t len = 18;
+			char *data = strdup("<h1>Not Found</h1>");
+
+			sprintf(lennum, "%ld", len);
+			response.Status = http_response_status_str(status);
+			map_add(&response.headers, "Content-Length", lennum);
+			map_add(&response.headers, "Content-Type", "text/html");
+
+			response.body = data;
+		}
+		else if(strcmp(extention, ".lua") == 0)
 		{
-			response = lua_tolstring(L, lua_gettop(L), &len_response );
-			lua_pop(L, 1);
-		}
+			// TODO: integrate lua
 
-		lua_getglobal(L, "__KEEP_ALIVE__");
-		if(lua_isinteger(L, -1))
+			int status = 404;
+			size_t len = 18;
+			char *data = strdup("<h1>Not Found</h1>");
+
+			sprintf(lennum, "%ld", len);
+			response.Status = http_response_status_str(status);
+			map_add(&response.headers, "Content-Length", lennum);
+			map_add(&response.headers, "Content-Type", "text/html");
+
+			response.body = data;
+		}
+		else
 		{
-			keep_alive = lua_tointeger(L, lua_gettop(L));
-			lua_pop(L, 1);
+			int status = 0;
+			size_t len = 0;
+			char *data = NULL;
+
+			data = load_file(path, &len, &status);
+
+			sprintf(lennum, "%ld", len);
+
+			response.Status = http_response_status_str(status);
+			map_add(&response.headers, "Content-Length", lennum);
+			map_add(&response.headers, "Content-Type", "text/html");
+
+			response.body = data;
 		}
+	}
+	else
+	{
+			int status = 501;
+			size_t len = 27;
+			char *data = strdup("<h1>Unsupported Method</h1>");
 
-		send(c->fd, response, len_response, 0);
+			sprintf(lennum, "%ld", len);
+			response.Status = http_response_status_str(status);
+			map_add(&response.headers, "Content-Length", lennum);
+			map_add(&response.headers, "Content-Type", "text/html");
 
-		free(request);
+			response.body = data;
 	}
 
-	printf("[Disconnected] :: %d\n", c->fd);
+	size_t raw_response_len = 0;
+	char *raw_response = http_response_gen(&response, &raw_response_len);
 
-	// killing the vm because I can lol
-	lua_close(L);
+	send(c->fd, raw_response, raw_response_len, 0);
+
+	// freeing all the memory so that the OS remains happy lol
+	map_destroy(&request.headers);
+	map_destroy(&response.headers);
+	free(response.body);
+	free(raw_response);
+	free(raw_request);
 
 	shutdown(c->fd, SHUT_RDWR);
 	close(c->fd);
+}
+
+// NOTE: loads file from paths and also handles the err code
+// TODO: make it protable
+static char *load_file(char *path, size_t *len, int *tf)
+{
+	struct stat file_stat = {0};
+	int status = stat(path, &file_stat);
+
+	// if the file is not found we do 404
+	if(status < 0)
+	{
+		if(errno == ENOENT)
+		{
+			*tf = 404;
+			*len = 18;
+			return strdup("<h1>Not Found</h1>");
+		}
+		else exit(69);
+	}
+
+	// if the file is found but its not regular then 403
+	if((file_stat.st_mode & S_IFMT) != S_IFREG)
+	{
+		*tf = 403;
+		*len = 25;
+		return strdup("<h1>Forbidden Access</h1>");
+	}
+
+	char *file = malloc((file_stat.st_size+1) * sizeof(char));
+
+	FILE *fd = fopen(path, "r");
+	fread(file, sizeof(char), file_stat.st_size, fd);
+	fclose(fd);
+
+	file[file_stat.st_size] = 0;
+
+	*tf = 200;
+	*len = file_stat.st_size;
+	return file;
 }

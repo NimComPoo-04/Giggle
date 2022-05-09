@@ -108,3 +108,8 @@ void map_destroy(map_t *m)
 	}
 	free(m->bkts);
 }
+
+int map_default_hash(char *key)
+{
+	return strlen(key);
+}

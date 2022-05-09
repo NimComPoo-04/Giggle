@@ -3,6 +3,7 @@
 
 #include <pthread.h>
 #include "tpool.h"
+#include "map.h"
 
 typedef struct
 {
