@@ -2,6 +2,7 @@
 #include <signal.h>
 
 #include "server.h"
+#include "map.h"
 
 #define PORT (8080)
 #define BACKLOG (1)
