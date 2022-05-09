@@ -95,6 +95,7 @@ http_request_t http_request_parse(char *req)
 	}
 
 	hrt.body = sav+2;
+	hrt.body_fields = http_request_parse_body(&hrt);
 
 	return hrt;
 }

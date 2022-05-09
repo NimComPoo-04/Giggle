@@ -14,6 +14,7 @@ typedef struct
 	char *URI;
 	map_t headers;
 	char *body;
+	map_t body_fields;
 } http_request_t;
 
 typedef struct

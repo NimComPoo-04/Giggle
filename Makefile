@@ -50,4 +50,4 @@ get_dep:
 	$(RM) lua-5.3.6.tar.gz
 	make -C lua-5.3.6 posix
 
-.PHONY: clean run setup all get_dependency
+.PHONY: clean run setup all get_dep
