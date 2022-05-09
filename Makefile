@@ -15,8 +15,6 @@ endif
 SRC := $(wildcard *.c $(foreach T, $(DIR), $(T)/*.c))
 OBJ := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SRC))
 
-LUA_SRC := $(wildcard *.lua $(foreach T, $(DIR), $(T)/*.lua))
-
 INCDIR := $(addprefix -I, $(INCS))
 
 XLIBDIR := $(addprefix -L, $(LIBDIR))
@@ -29,16 +27,10 @@ mkdir -p $(T)
 
 endef
 
-define CPY
-cp $(T) $(BUILD_DIR)/$(notdir $(T))
-
-endef
-
 all: setup $(BUILD_DIR)/$(TARGET)
 
 setup:
 	$(foreach T, $(BLD_DIRS), $(BLD))
-	$(foreach T, $(LUA_SRC), $(CPY)) 
 
 $(BUILD_DIR)/$(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ $(XLIBDIR) $(XLIB)
@@ -46,8 +38,8 @@ $(BUILD_DIR)/$(TARGET): $(OBJ)
 $(BUILD_DIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $(INCDIR) -o $@ $<
 
-run: setup $(BUILD_DIR)/$(TARGET)
-	cd $(BUILD_DIR) && ./$(TARGET)
+run: $(BUILD_DIR)/$(TARGET)
+	./$^
 
 clean:
 	$(RM) $(BUILD_DIR)

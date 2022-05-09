@@ -44,19 +44,6 @@ static int strnzcmp(char *c, char *d, size_t l)
 	return 0;
 }
 
-// TODO: remove this person. he is very very unsafe don't need those
-int strzcmp(char *c, char *d)
-{
-	while(*c != 0 && *d != 0)
-	{
-		if(tolower(*c) != tolower(*d))
-			return 1;
-		c++;
-		d++;
-	}
-	return 0;
-}
-
 // NOTE: does what strtok does except the delim is a flat pattern?.
 static char *strcok(char *orig, char *delim, char **save)
 {

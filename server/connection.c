@@ -10,6 +10,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "connection.h"
+#include "http.h"
+
 static char *load_file(char *path, size_t *len, int *tf);
 
 void connection_handler(connection_t *c)
