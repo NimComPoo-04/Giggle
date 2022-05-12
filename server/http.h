@@ -23,6 +23,7 @@ typedef struct
 	char *Status;
 	map_t headers;
 	char *body;
+	size_t body_len;
 } http_response_t;
 
 char *http_request_read(int con_fd, size_t *length);

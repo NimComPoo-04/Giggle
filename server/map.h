@@ -18,7 +18,7 @@ typedef struct
 map_t map_create(int length, int(*hash)(char *key));
 char *map_get(map_t *m, char *key);
 void map_set(map_t *m, char *key, char *value);
-void map_add(map_t *m, char *key, char *value);
+int map_add(map_t *m, char *key, char *value);
 void map_rm(map_t *m, char *key);
 void map_destroy(map_t *m);
 

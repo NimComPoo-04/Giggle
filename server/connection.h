@@ -8,6 +8,7 @@
 typedef struct
 {
 	int fd;
+	map_t *mime_types;
 } connection_t;
 
 void connection_handler(connection_t *);

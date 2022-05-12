@@ -64,6 +64,12 @@ server_t server_create(int port, int backlog)
 
 	s.scheduler = tpool_create(1);
 
+	s.mime_types = map_create(10, map_default_hash);
+
+	map_add(&s.mime_types, ".html", "text/html; charset=utf-8");
+	map_add(&s.mime_types, ".png", "image/png");
+	map_add(&s.mime_types, ".jpeg", "image/jpeg");
+
 	return s;
 }
 
@@ -71,6 +77,7 @@ server_t server_create(int port, int backlog)
 void server_start(server_t *s)
 {
 	connection_t con = {0}; 
+	con.mime_types = &s->mime_types;
 
 	// TODO: make this multi threaded
 	while(s->listning)
@@ -82,6 +89,7 @@ void server_start(server_t *s)
 
 void server_destroy(server_t *s)
 {
+	map_destroy(&s->mime_types);
 	tpool_destroy(s->scheduler);
 	shutdown(s->fd, SHUT_RDWR);
 	close(s->fd);

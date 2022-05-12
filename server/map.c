@@ -45,9 +45,11 @@ void map_set(map_t *m, char *key, char *value)
 	}
 }
 
-void map_add(map_t *m, char *key, char *value)
+int map_add(map_t *m, char *key, char *value)
 {
 	int hsh = m->hash(key) % m->length;
+
+	if(map_get(m, key) != NULL) return 1;
 
 	struct bkt_t *b = m->bkts[hsh];
 
@@ -57,7 +59,7 @@ void map_add(map_t *m, char *key, char *value)
 		m->bkts[hsh]->key = key;
 		m->bkts[hsh]->value= value;
 		m->bkts[hsh]->next = NULL;
-		return;
+		return 0;
 	}
 
 	struct bkt_t *n = b->next;
@@ -66,6 +68,8 @@ void map_add(map_t *m, char *key, char *value)
 	b->next->key = key;
 	b->next->value = value;
 	b->next->next = n;
+
+	return 0;
 }
 
 void map_rm(map_t *m, char *key)

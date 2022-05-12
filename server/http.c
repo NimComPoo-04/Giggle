@@ -44,6 +44,28 @@ static int strnzcmp(char *c, char *d, size_t l)
 	return 0;
 }
 
+// TODO: ugly pointer arithmatic plz update
+static char *url_decode(char *place)
+{
+	const char *hex_dig = "0123456789ABCDEF";
+	char *orig = place;
+	while(*place)
+	{
+		if(*place == '+') *place = ' ';
+		if(*place == '%')
+		{
+			char ch = (char)(((strchr(hex_dig, *(place+1)) - hex_dig) << 4) | (strchr(hex_dig, *(place+2)) - hex_dig));
+			place += 2;
+			*place = ch;
+			memcpy(orig+2, orig, (place-orig-2));
+			orig += 2;
+		}
+		place++;
+	}
+
+	return orig;
+}
+
 // NOTE: does what strtok does except the delim is a flat pattern?.
 static char *strcok(char *orig, char *delim, char **save)
 {
@@ -109,7 +131,7 @@ map_t http_request_parse_body(http_request_t *h)
 	while(*sav != 0)
 	{
 		char *k1 = strcok(NULL, "=", &sav);
-		char *k2 = strcok(NULL, "&", &sav);
+		char *k2 = url_decode(strcok(NULL, "&", &sav));
 
 		map_add(&vars, k1, k2);
 	}
@@ -136,7 +158,9 @@ char *http_response_gen(http_response_t *h, size_t *len)
 		}
 	}
 
-	fprintf(stream, "\r\n%s", h->body);
+	fprintf(stream, "\r\n");
+
+	fwrite(h->body, sizeof(char), h->body_len, stream);
 
 	fclose(stream);
 

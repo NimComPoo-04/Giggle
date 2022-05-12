@@ -18,12 +18,14 @@
 #include "http.h"
 
 static char *load_file(char *path, size_t *len, int *tf);
-static char *exec_luascript(char *path, size_t *len, int *tf, http_request_t *request);
+static void exec_lua(lua_State *l, char *path, size_t *len, int *tf, http_request_t *req, http_response_t *res);
 
 void connection_handler(connection_t *c)
 {
 	char lennum[32] = {0}; // this is a little helper lol
 
+	// NOTE: there could be edge cases here that idk about
+	// this needs some testing.
 	size_t raw_request_len = 0;
 	char *raw_request = http_request_read(c->fd, &raw_request_len);
 	http_request_t request = http_request_parse(raw_request);
@@ -34,6 +36,10 @@ void connection_handler(connection_t *c)
 	response.headers = map_create(10, map_default_hash);
 	map_add(&response.headers, "Server", "Giggle");
 
+	// FIXME: This is done for the sole perpose that lua has a garbage collector
+	// and there is literally noway to pull values out of it after it is closed
+	// so we extending the scope of lua here lol. find a better way to do this.
+	lua_State *L = NULL;
 
 	// TODO: don't let this be hard coded for the love of god
 	char *public_dir = "public";
@@ -55,70 +61,83 @@ void connection_handler(connection_t *c)
 		sprintf(lennum, "%ld", len);
 		response.Status = http_response_status_str(status);
 		map_add(&response.headers, "Content-Length", lennum);
-		map_add(&response.headers, "Content-Type", "text/html");
+		map_add(&response.headers, "Content-Type", "text/html; charset=utf-8");
 
 		response.body = data;
-	}
-	else if(strcmp(extention, ".lua") == 0)
-	{
-		int status = 0;
-		size_t len = 0;
-		char *data = 0;
-
-		data = exec_luascript(path, &len, &status, &request);
-
-		sprintf(lennum, "%ld", len);
-		response.Status = http_response_status_str(status);
-		map_add(&response.headers, "Content-Length", lennum);
-		map_add(&response.headers, "Content-Type", "text/html");
-
-		response.body = data;
+		response.body_len = len;
 	}
 	else
 	{
-		if(strcmp(request.Method, "GET") == 0)
+		if(strcmp(extention, ".lua") == 0)
 		{
 			int status = 0;
 			size_t len = 0;
-			char *data = NULL;
 
-			data = load_file(path, &len, &status);
+			L = luaL_newstate();
+
+			exec_lua(L, path, &len, &status, &request, &response);
 
 			sprintf(lennum, "%ld", len);
 
 			response.Status = http_response_status_str(status);
 			map_add(&response.headers, "Content-Length", lennum);
-			map_add(&response.headers, "Content-Type", "text/html");
-
-			response.body = data;
+			map_add(&response.headers, "Content-Type", "text/html; charset=utf-8");
+			response.body_len = len;
 		}
 		else
 		{
-			int status = 501;
-			size_t len = 27;
-			char *data = strdup("<h1>Unsupported Method</h1>");
+			if(strcmp(request.Method, "GET") == 0)
+			{
+				int status = 0;
+				size_t len = 0;
+				char *data = NULL;
 
-			sprintf(lennum, "%ld", len);
-			response.Status = http_response_status_str(status);
-			map_add(&response.headers, "Content-Length", lennum);
-			map_add(&response.headers, "Content-Type", "text/html");
+				data = load_file(path, &len, &status);
 
-			response.body = data;
+				sprintf(lennum, "%ld", len);
+
+				response.Status = http_response_status_str(status);
+				map_add(&response.headers, "Content-Length", lennum);
+
+				char *type = map_get(c->mime_types, extention);
+				if(type) map_add(&response.headers, "Content-Type", type);
+
+				response.body = data;
+				response.body_len = len;
+			}
+			else
+			{
+				int status = 501;
+				size_t len = 27;
+				char *data = strdup("<h1>Unsupported Method</h1>");
+
+				sprintf(lennum, "%ld", len);
+				response.Status = http_response_status_str(status);
+				map_add(&response.headers, "Content-Length", lennum);
+				map_add(&response.headers, "Content-Type", "text/html; charset=utf-8");
+
+				response.body = data;
+				response.body_len = len;
+			}
 		}
 	}
 
 	size_t raw_response_len = 0;
 	char *raw_response = http_response_gen(&response, &raw_response_len);
 
-	send(c->fd, raw_response, raw_response_len, 0);
+	int prnt = send(c->fd, raw_response, raw_response_len, 0);
+	if(prnt == -1) printf("%s\n", strerror(errno));
 
 	// freeing all the memory so that the OS remains happy lol
 	map_destroy(&request.headers);
 	map_destroy(&request.body_fields);
 	map_destroy(&response.headers);
+
 	free(response.body);
 	free(raw_response);
 	free(raw_request);
+
+	if(L) lua_close(L);
 
 	shutdown(c->fd, SHUT_RDWR);
 	close(c->fd);
@@ -151,24 +170,39 @@ static char *load_file(char *path, size_t *len, int *tf)
 		return strdup("<h1>Forbidden Access</h1>");
 	}
 
-	char *file = malloc((file_stat.st_size+1) * sizeof(char));
+	char *file = malloc(file_stat.st_size * sizeof(char));
 
-	FILE *fd = fopen(path, "r");
+	FILE *fd = fopen(path, "rb");
 	fread(file, sizeof(char), file_stat.st_size, fd);
 	fclose(fd);
 
-	file[file_stat.st_size] = 0;
+	//file[file_stat.st_size] = 0;
 
 	*tf = 200;
 	*len = file_stat.st_size;
 	return file;
 }
 
-static int internal_luafunc_http_print(lua_State *l);
+/* :: LUA code executions ahead lol */
 
-// TODO: this is atrociously slow lol
-// improve it... IMPROVE IT!!!
-static char *exec_luascript(char *path, size_t *len, int *tf, http_request_t *request)
+struct http_lua
+{
+	FILE *stream;
+	char *body;
+	size_t len;
+
+	int tf;
+	http_request_t *req;
+	http_response_t *res;
+};
+
+static int http_print_lua(lua_State *L);
+static int http_status_lua(lua_State *L);
+static int http_header_lua(lua_State *L);
+static int http_getreq_lua(lua_State *L);
+static int http_getform_lua(lua_State *L);
+
+static void exec_lua(lua_State *L, char *path, size_t *len, int *tf, http_request_t *req, http_response_t *res)
 {
 	struct stat file_stat = {0};
 	int status = stat(path, &file_stat);
@@ -180,7 +214,7 @@ static char *exec_luascript(char *path, size_t *len, int *tf, http_request_t *re
 		{
 			*tf = 404;
 			*len = 18;
-			return strdup("<h1>Not Found</h1>");
+			res->body = strdup("<h1>Not Found</h1>");
 		}
 		else exit(69);
 	}
@@ -190,102 +224,175 @@ static char *exec_luascript(char *path, size_t *len, int *tf, http_request_t *re
 	{
 		*tf = 403;
 		*len = 25;
-		return strdup("<h1>Forbidden Access</h1>");
+		res->body = strdup("<h1>Forbidden Access</h1>");
+		return;
 	}
 
-	lua_State *L = luaL_newstate();
-	luaL_openlibs(L);
+	struct http_lua htl = {0};
+	htl.stream = open_memstream(&htl.body, &htl.len);
+	htl.req = req;
+	htl.res = res;
 
-	// NOTE : the next part is like writing assembly so
-	// commenting each line is a must lol
+	lua_pushlightuserdata(L, &htl);
+	lua_setglobal(L, "__HTTP__");
 
-	// registering __HTTP_REQUEST__ table
-	lua_newtable(L);	// create's table
-
-	lua_pushstring(L, "Method");
-	lua_pushstring(L, request->Method);
-	lua_settable(L, -3);
-
-	lua_pushstring(L, "URI");
-	lua_pushstring(L, request->URI);
-	lua_settable(L, -3);
-
-	lua_pushstring(L, "Protocol");
-	lua_pushstring(L, request->Protocol);
-	lua_settable(L, -3);
-
-	for(int i = 0; i < request->headers.length; i++)
-	{
-		struct bkt_t *b = request->headers.bkts[i];
-		while(b)
-		{
-			lua_pushstring(L, b->key);	// pushes key onto stack
-			lua_pushstring(L, b->value);	// pushes value onto stack
-			lua_settable(L, -3);		// sets table[key] to value
-			b = b->next;
-		}
-	}
-
-	lua_pushstring(L, "Body");	// name of the table lol
-	lua_newtable(L);		// create's table
-	for(int i = 0; i < request->body_fields.length; i++)
-	{
-		struct bkt_t *b = request->body_fields.bkts[i];
-		while(b)
-		{
-			lua_pushstring(L, b->key);	// pushes key onto stack
-			lua_pushstring(L, b->value);	// pushes value onto stack
-			lua_settable(L, -3);		// sets table[key] to value
-			b = b->next;
-		}
-	}
-	lua_settable(L, -3);		// sets table[key] to value
-
-	lua_setglobal(L, "__HTTP_REQUEST__");	// sets it a global name
-
-	lua_pushstring(L, "");
-	lua_setglobal(L, "__HTTP_RESPONSE__");	// sets it a global name
-
-	lua_register(L, "http_print", internal_luafunc_http_print);
+	lua_register(L, "http_print", http_print_lua);
+	lua_register(L, "http_status", http_status_lua);
+	lua_register(L, "http_header", http_header_lua);
+	lua_register(L, "http_getreq", http_getreq_lua);
+	lua_register(L, "http_getform", http_getform_lua);
 
 	if(luaL_dofile(L, path) != LUA_OK)
 	{
 		if(lua_isstring(L, -1))
+		{
 			printf("%s\n", lua_tostring(L, -1));
+		}
 		lua_pop(L, 1);
 	}
 
-	// just the body of the response
-	// the rest would be generated in the server
-	
-	char *body = NULL;
+	fclose(htl.stream);
 
-	lua_getglobal(L, "__HTTP_RESPONSE__");
-	if(lua_isstring(L, -1))
-	{
-		body = strdup(lua_tolstring(L, -1, len)); // cool
-	}
-
-	lua_close(L);
-
-	*tf = 200;
-	return body;
+	htl.res->body = htl.body;
+	*len = htl.len;
+	*tf = htl.tf;
 }
 
-static int internal_luafunc_http_print(lua_State *L)
+// TODO: separate out the error handling code from the main functional
+// code. stuff looks really cluttered with all the error handling
+static int http_print_lua(lua_State *L)
 {
-	if(!lua_isstring(L, 1))
-	{
-		lua_pushliteral(L, "incorrect argument");
-		lua_error(L);
-	}
-	const char *arg1 = lua_tostring(L, 1);
+	int n = lua_gettop(L);	// getting the number of arguments by studying the stack
+	// checking argument list and its type
+	if(n != 1) luaL_error(L, "Function requires string as argument");
+	if(!lua_isstring(L, 1)) luaL_argerror(L, 1, "The type of argument is not string");
 
-	lua_getglobal(L, "__HTTP_RESPONSE__");
-	lua_pushstring(L, arg1);
+	lua_getglobal(L, "__HTTP__");
 
-	lua_concat(L, 2);
-	lua_setglobal(L, "__HTTP_RESPONSE__");
+	if(!lua_isuserdata(L, -1))
+		luaL_error(L, "__HTTP__ is not found");
+
+	struct http_lua *htl = lua_touserdata(L, -1);
+
+	if(htl == NULL)
+		luaL_error(L, "__HTTP__ was nil");
+
+	fprintf(htl->stream, "%s\n", lua_tostring(L, 1));
+
+	lua_pop(L, 1); // to remove global from stack
+
+	return 0; // we returning no arguments lol
+}
+
+static int http_status_lua(lua_State *L)
+{
+	int n = lua_gettop(L);	// getting the number of arguments by studying the stack
+	// checking argument list and its type
+	if(n != 1) luaL_error(L, "Function requires integer as argument");
+	if(!lua_isinteger(L, 1)) luaL_argerror(L, 1, "The type of argument is not integer");
+
+	lua_getglobal(L, "__HTTP__");
+
+	if(!lua_isuserdata(L, -1))
+		luaL_error(L, "__HTTP__ is not found");
+
+	struct http_lua *htl = lua_touserdata(L, -1);
+
+	if(htl == NULL)
+		luaL_error(L, "__HTTP__ was nil");
+
+	htl->tf = lua_tointeger(L, 1);
+
+	lua_pop(L, 1); // to remove global from stack
 
 	return 0;
+}
+
+static int http_header_lua(lua_State *L)
+{
+	int n = lua_gettop(L);	// getting the number of arguments by studying the stack
+	// checking argument list and its type
+	if(n != 2) luaL_error(L, "Function requires string, string as arguments");
+	if(!lua_isstring(L, 2)) luaL_argerror(L, 2, "The type of argument is not string");
+	if(!lua_isstring(L, 1)) luaL_argerror(L, 1, "The type of argument is not string");
+
+	lua_getglobal(L, "__HTTP__");
+
+	if(!lua_isuserdata(L, -1))
+		luaL_error(L, "__HTTP__ is not found");
+
+	struct http_lua *htl = lua_touserdata(L, -1);
+
+	if(htl == NULL)
+		luaL_error(L, "__HTTP__ was nil");
+
+	// TODO: this is a bit clunky... update the map structure to accomodate this edgecase
+	// FIXME: this is some undefined teretory const is discarded
+	if(map_add(&htl->res->headers, (char *)lua_tostring(L, 2), (char *)lua_tostring(L, 1)))
+		map_set(&htl->res->headers, (char *)lua_tostring(L, 2), (char *)lua_tostring(L, 1));
+
+	lua_pop(L, 1); // to remove global from stack
+
+	return 0; // we returning no arguments lol
+}
+
+static int http_getreq_lua(lua_State *L)
+{
+	int n = lua_gettop(L);	// getting the number of arguments by studying the stack
+	// checking argument list and its type
+	if(n != 1) luaL_error(L, "Function requires string as argument");
+	if(!lua_isstring(L, 1)) luaL_argerror(L, 1, "The type of argument is not string");
+
+	lua_getglobal(L, "__HTTP__");
+
+	if(!lua_isuserdata(L, -1))
+		luaL_error(L, "__HTTP__ is not found");
+
+	struct http_lua *htl = lua_touserdata(L, -1);
+
+	if(htl == NULL)
+		luaL_error(L, "__HTTP__ was nil");
+
+	// FIXME: This is some undefined behaviour teretory here. it won't crash because map's current
+	// behaviour but this is very bad needs to update
+	char *key = (char *)lua_tostring(L, 1);
+
+	const char *value = map_get(&htl->req->headers, key);
+
+	lua_pop(L, 1); // to remove global from stack
+
+	lua_pushstring(L, value ? value : NULL);
+
+	return 1;
+}
+
+// TODO: code duplication do something about it!!
+static int http_getform_lua(lua_State *L)
+{
+	int n = lua_gettop(L);	// getting the number of arguments by studying the stack
+	// checking argument list and its type
+	if(n != 1) luaL_error(L, "Function requires string as argument");
+	if(!lua_isstring(L, 1)) luaL_argerror(L, 1, "The type of argument is not string");
+
+	lua_getglobal(L, "__HTTP__");
+
+	if(!lua_isuserdata(L, -1))
+		luaL_error(L, "__HTTP__ is not found");
+
+	struct http_lua *htl = lua_touserdata(L, -1);
+
+	if(htl == NULL)
+		luaL_error(L, "__HTTP__ was nil");
+
+	// FIXME: This is some undefined behaviour teretory here. it won't crash because map's current
+	// behaviour but this is very bad needs to update
+	char *key = (char *)lua_tostring(L, 1);
+
+	const char *value = map_get(&htl->req->body_fields, key);
+
+	lua_pop(L, 1); // to remove global from stack
+
+	lua_pushstring(L, value ? value : "");
+
+	return 1;
 }

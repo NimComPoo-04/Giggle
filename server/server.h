@@ -10,6 +10,8 @@ typedef struct
 	int fd;			// server file descriptor
 	int listning;		// listing or not dude
 	tpool_t *scheduler;	// scheduler or so i would think lol
+
+	map_t mime_types;	// has a list of mimetypes that the stuff supports
 } server_t;
 
 server_t server_create(int port, int backport);
