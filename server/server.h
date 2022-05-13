@@ -12,6 +12,7 @@ typedef struct
 	tpool_t *scheduler;	// scheduler or so i would think lol
 
 	map_t mime_types;	// has a list of mimetypes that the stuff supports
+	map_t routes;		// custom routes just incase We see some stuff that we don't understand
 } server_t;
 
 server_t server_create(int port, int backport);

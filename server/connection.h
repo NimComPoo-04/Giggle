@@ -9,6 +9,7 @@ typedef struct
 {
 	int fd;
 	map_t *mime_types;
+	map_t *routes;
 } connection_t;
 
 void connection_handler(connection_t *);

@@ -52,73 +52,60 @@ void connection_handler(connection_t *c)
 
 	if(extention == NULL)
 	{
-		// TODO: action routes here
+		strcpy(path, map_get(c->routes, request.URI));
+		if(path == NULL) strcpy(path, "public/404.html");
+		extention = strchr(path, '.');
+	}
+	if(strcmp(extention, ".lua") == 0)
+	{
+		int status = 0;
+		size_t len = 0;
 
-		int status = 404;
-		size_t len = 18;
-		char *data = strdup("<h1>Not Found</h1>");
+		L = luaL_newstate();
+
+		exec_lua(L, path, &len, &status, &request, &response);
 
 		sprintf(lennum, "%ld", len);
+
 		response.Status = http_response_status_str(status);
 		map_add(&response.headers, "Content-Length", lennum);
 		map_add(&response.headers, "Content-Type", "text/html; charset=utf-8");
-
-		response.body = data;
 		response.body_len = len;
 	}
 	else
 	{
-		if(strcmp(extention, ".lua") == 0)
+		if(strcmp(request.Method, "GET") == 0)
 		{
 			int status = 0;
 			size_t len = 0;
+			char *data = NULL;
 
-			L = luaL_newstate();
-
-			exec_lua(L, path, &len, &status, &request, &response);
+			data = load_file(path, &len, &status);
 
 			sprintf(lennum, "%ld", len);
 
 			response.Status = http_response_status_str(status);
 			map_add(&response.headers, "Content-Length", lennum);
-			map_add(&response.headers, "Content-Type", "text/html; charset=utf-8");
+
+			char *type = map_get(c->mime_types, extention);
+			if(type) map_add(&response.headers, "Content-Type", type);
+
+			response.body = data;
 			response.body_len = len;
 		}
 		else
 		{
-			if(strcmp(request.Method, "GET") == 0)
-			{
-				int status = 0;
-				size_t len = 0;
-				char *data = NULL;
+			int status = 501;
+			size_t len = 27;
+			char *data = strdup("<h1>Unsupported Method</h1>");
 
-				data = load_file(path, &len, &status);
+			sprintf(lennum, "%ld", len);
+			response.Status = http_response_status_str(status);
+			map_add(&response.headers, "Content-Length", lennum);
+			map_add(&response.headers, "Content-Type", "text/html; charset=utf-8");
 
-				sprintf(lennum, "%ld", len);
-
-				response.Status = http_response_status_str(status);
-				map_add(&response.headers, "Content-Length", lennum);
-
-				char *type = map_get(c->mime_types, extention);
-				if(type) map_add(&response.headers, "Content-Type", type);
-
-				response.body = data;
-				response.body_len = len;
-			}
-			else
-			{
-				int status = 501;
-				size_t len = 27;
-				char *data = strdup("<h1>Unsupported Method</h1>");
-
-				sprintf(lennum, "%ld", len);
-				response.Status = http_response_status_str(status);
-				map_add(&response.headers, "Content-Length", lennum);
-				map_add(&response.headers, "Content-Type", "text/html; charset=utf-8");
-
-				response.body = data;
-				response.body_len = len;
-			}
+			response.body = data;
+			response.body_len = len;
 		}
 	}
 

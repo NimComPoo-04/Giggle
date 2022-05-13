@@ -67,8 +67,14 @@ server_t server_create(int port, int backlog)
 	s.mime_types = map_create(10, map_default_hash);
 
 	map_add(&s.mime_types, ".html", "text/html; charset=utf-8");
+	map_add(&s.mime_types, ".css", "text/css; charset=utf-8");
+	map_add(&s.mime_types, ".js", "application/javascript; charset=utf-8");
 	map_add(&s.mime_types, ".png", "image/png");
 	map_add(&s.mime_types, ".jpeg", "image/jpeg");
+
+	s.routes = map_create(10, map_default_hash);
+
+	map_add(&s.routes, "/", "public/index.html");
 
 	return s;
 }
@@ -78,6 +84,7 @@ void server_start(server_t *s)
 {
 	connection_t con = {0}; 
 	con.mime_types = &s->mime_types;
+	con.routes = &s->routes;
 
 	// TODO: make this multi threaded
 	while(s->listning)
@@ -90,6 +97,7 @@ void server_start(server_t *s)
 void server_destroy(server_t *s)
 {
 	map_destroy(&s->mime_types);
+	map_destroy(&s->routes);
 	tpool_destroy(s->scheduler);
 	shutdown(s->fd, SHUT_RDWR);
 	close(s->fd);
