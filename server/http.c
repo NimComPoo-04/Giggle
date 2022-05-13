@@ -173,6 +173,7 @@ char *http_response_status_str(int status)
 	switch(status)
 	{
 		case 200: return "200 Success";
+		case 302: return "302 Moved Temporarily";
 		case 403: return "403 Forbidden Access";
 		case 404: return "404 Not Found";
 		case 501: return "501 Unsupported Method";

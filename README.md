@@ -14,9 +14,15 @@ This program should be ported to windows... in the _future_ ;P
 
 ###### Build Instruction
 
+This will do all the things that are needed to build the project
+this will also start the server
+
 ```
-make run # Yeah literally just this lol
+make get_dep
+make run
 ```
+
+The server hosts the server at: [http://localhost:8080/index.html](Here)
 
 #### IN DEV DON'T USE
 

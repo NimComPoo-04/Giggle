@@ -300,8 +300,8 @@ static int http_header_lua(lua_State *L)
 	int n = lua_gettop(L);	// getting the number of arguments by studying the stack
 	// checking argument list and its type
 	if(n != 2) luaL_error(L, "Function requires string, string as arguments");
-	if(!lua_isstring(L, 2)) luaL_argerror(L, 2, "The type of argument is not string");
 	if(!lua_isstring(L, 1)) luaL_argerror(L, 1, "The type of argument is not string");
+	if(!lua_isstring(L, 2)) luaL_argerror(L, 2, "The type of argument is not string");
 
 	lua_getglobal(L, "__HTTP__");
 
@@ -315,8 +315,8 @@ static int http_header_lua(lua_State *L)
 
 	// TODO: this is a bit clunky... update the map structure to accomodate this edgecase
 	// FIXME: this is some undefined teretory const is discarded
-	if(map_add(&htl->res->headers, (char *)lua_tostring(L, 2), (char *)lua_tostring(L, 1)))
-		map_set(&htl->res->headers, (char *)lua_tostring(L, 2), (char *)lua_tostring(L, 1));
+	if(map_add(&htl->res->headers, (char *)lua_tostring(L, 1), (char *)lua_tostring(L, 2)))
+		map_set(&htl->res->headers, (char *)lua_tostring(L, 1), (char *)lua_tostring(L, 2));
 
 	lua_pop(L, 1); // to remove global from stack
 
