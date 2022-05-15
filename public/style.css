@@ -1,55 +1,199 @@
-/* @import url('https://fonts.googleapis.com/css2?family=Oswald&display=swap'); */
+/* From google fonts */
+@font-face {
+	font-family: 'Montserrat';
+	font-style: normal;
+	src: url(Montserrat.woff2) format('woff2');
+}
 
-body {
+* {
 	padding: 0px;
 	margin: 0px;
+	font-family: 'Montserrat', sans-serif;
+}
+
+body {
+	background-color: darkgrey;
+}
+
+nav.top {
+	display: flex;
+	justify-content: space-between;
+	padding-top: 1%;
+	padding-left: 10%;
+	padding-right: 10%;
+	background-color: black;
 	color: aliceblue;
 }
 
+ul.dead-links a, ul.more-dead-links a {
+	text-decoration: none;
+}
+
+ul.dead-links a:hover, ul.more-dead-links a:hover {
+	text-decoration: underline;
+	color: gold;
+}
+
+ul.dead-links {
+	align-self: flex-start;
+	text-decoration: none;
+	display: flex;
+}
+
+ul.dead-links li, ul.more-dead-links li {
+	display: block;
+	padding-right: 20px;
+	height: 30px;
+	text-align: center;
+}
+
+ul.more-dead-links {
+	align-self: flex-end;
+	display: flex;
+}
+
 header {
-	width: 100%;
-	height: 100%;
-	background-color: navy;
+	height: 30%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 header span {
 	display: block;
-	position: relative;
-	top: 37%;
+	font-size: 72px;
 	text-align: center;
-	font-size: 100px;
-	font-family: 'Oswald', sans-serif;
 }
 
-header span span {
+header span em {
 	display: block;
-	position: relative;
+	font-size: 15px;
+}
+
+nav.middle {
+	display: flex;
+	justify-content: center;
+	border-top: 1px solid grey;
+	border-bottom: 1px solid grey;
+	margin-left: 20%;
+	margin-right: 20%;
+}
+
+nav.middle ul.dead-links {
+	padding-top: 2%;
+	padding-right: 2%;
+	padding-left: 2%;
+}
+
+.act {
+	padding-left: 15%;
+	padding-right: 15%;
+	padding-top: 3%;
+	padding-bottom: 3%;
+}
+
+.act-header {
+	display: block;
 	text-align: center;
-	font-style: italic;
-	font-size: 30px;
-	padding-top: 45px;
+	font-size: 32px;
+	padding: 3%;
 }
 
-#box-button {
-	display:block;
-	position: relative;
-	width: 8%;
-	height: 6%;
-	top: 55%;
-	left: 46%;
-	text-align: center;
-	border: 1px dashed burlywood;
+.act-header em {
+	padding-top: 3px;
+	display: block;
+	font-size: 12px;
 }
 
-#box-button:hover {
-	background-color: burlywood;
+.act-body {
+	display: flex;
+	flex-flow:column;
+	justify-items: space-between;
 }
 
-#box-button a {
-	text-decoration: none;
-	position: relative;
-	font-family: 'Oswald', sans-serif;
+.act-body span {
 	font-size: 20px;
-	top: 30%;
+}
+
+.act-body img {
+	display: block;
+	align-self: center;
+	padding-bottom: 2%;
+	width: 100%;
+}
+
+.end {
+	display: block;
+	background-color: black;
+	color: darkgrey;
+	font-size: 14px;
+}
+
+.card {
+	padding: 2%;
+	margin: 2%;
+	margin-left: 15%;
+	margin-right: 15%;
+	display: flex;
+	background-color: grey;
+	border-radius: 25px;
+}
+
+.card img{
+	justify-self: flex-start;
+	width: 45%;
+	padding-right: 5%;
+}
+
+.card form{
+	justify-self: flex-end;
+	width: 50%;
+}
+
+.card form label {
+	display: block;
+	margin: 2%;
+	margin-left: 0%;
+	color: aliceblue;
+	font-style: italic;
+}
+
+.card form input {
+	display: block;
+	width: 100%;
+	padding: 1%;
+	background-color: lightgrey;
+	border-radius: 5px;
+	border: none;
+	font-size: 14px;
+}
+
+.card form textarea {
+	display:block;
+	width: 100%;
+	height: 45%;
+	padding: 1%;
+	background-color: lightgrey;
+	border-radius: 5px;
+	border: none;
+	resize: none;
+	font-size: 14px;
+}
+
+.sub {
+	display:block;
+	width: 20%;
+	height: 10%;
+	margin: 3%;
+	margin-left: 0%;
+}
+
+.sub:hover {
+	color: darkcyan;
+	background-color: aquamarine;
+}
+
+a {
 	color: inherit;
+	background-color: inherit;
 }

@@ -62,6 +62,7 @@ void connection_handler(connection_t *c)
 		size_t len = 0;
 
 		L = luaL_newstate();
+		luaL_openlibs(L);
 
 		exec_lua(L, path, &len, &status, &request, &response);
 

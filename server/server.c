@@ -71,6 +71,7 @@ server_t server_create(int port, int backlog)
 	map_add(&s.mime_types, ".js", "application/javascript; charset=utf-8");
 	map_add(&s.mime_types, ".png", "image/png");
 	map_add(&s.mime_types, ".jpeg", "image/jpeg");
+	map_add(&s.mime_types, ".woff", "font/woff2");
 
 	s.routes = map_create(10, map_default_hash);
 
