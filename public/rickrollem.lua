@@ -1,5 +1,5 @@
 http_status(200)
-http_header('Refresh', '6;url=https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=0s')
+http_header('Refresh', '5;url=https://www.youtube.com/watch?v=dQw4w9WgXcQ')
 
 doc = [[<html>
 <head>

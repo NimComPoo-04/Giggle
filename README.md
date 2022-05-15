@@ -22,11 +22,32 @@ make get_dep
 make run
 ```
 
-The server hosts the server at: [http://localhost:8080/index.html](Here)
+The server hosts the server at: [Here](http://localhost:8080/index.html)
 
-#### IN DEV DON'T USE
+#### THIS VERY BAD, USE AT OWN RISK
 
 **BUGS:**
-* Sometimes the server accepts connection but does not respond with anything atall.
-This happens mostly in the situations when the server exits without doing more than
-one connections. This is quite unfortunate.
+Please Report if you see any :)
+
+##### Server scripts
+
+They are just simple lua scripts nothing more...
+
+there are 5 functions to interact with the server
+
+```lua
+http_status()	-- sets the return status code (only few are actually supported)
+
+local request_value = http_getreq('User-Agent')	  -- returns the request value for http_key if exists
+
+local form_value = http_getform('name')    -- gets the post form value if any
+
+http_print('<h1>hi</hi>')	-- -_- prints response
+
+http_header('Location', '/')	-- sets header fields of response
+```
+
+the &#5f;&#5f;HTTP&#5f;&#5f; is reserved for internal use
+
+Well thats all lol...
+
