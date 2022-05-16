@@ -1,6 +1,6 @@
 # GIGGLE
 
-Simple Webserver for Educational Perposes
+Simple Webserver for Educational Perposes ;)
 
 ###### Dependencies
 
@@ -47,7 +47,11 @@ http_print('<h1>hi</hi>')	-- -_- prints response
 http_header('Location', '/')	-- sets header fields of response
 ```
 
-the &#5f;&#5f;HTTP&#5f;&#5f; is reserved for internal use
+the \_\_HTTP\_\_ is reserved for internal use
 
 Well thats all lol...
 
+#### Credits
+
+* Introducing bugs... yeah @NimComPoo-04 did that
+* Naming the project &lt;person name permission pending&gt;. Thnx bro for saving me 3 years of anxiety. Uk who u are ;)
